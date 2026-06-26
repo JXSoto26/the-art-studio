@@ -25,6 +25,22 @@ import type {
 /** Single-row settings table is keyed by a fixed id. */
 const SETTINGS_ID = 1;
 
+/**
+ * Neutral fallback when the site_settings singleton row hasn't been seeded yet.
+ * Lets the public site and admin render (with empty strings) instead of crashing
+ * on `.single()`. Seed the real row in SQL / via the admin Settings page.
+ */
+const DEFAULT_SETTINGS: SiteSettings = {
+  hero_title: "",
+  hero_subtitle: "",
+  hero_image_url: "",
+  whatsapp_number: "",
+  email: "",
+  address: "",
+  business_hours: "",
+  instagram_url: "",
+};
+
 /** Names of the deployed Postgres functions handling booking inventory. */
 const RPC = {
   createBooking: "create_booking_and_decrement_spots",
@@ -247,20 +263,25 @@ export function createSupabaseDataService(
     },
 
     // Settings ------------------------------------------------------------
-    getSettings: async () =>
-      one<SiteSettings>(
-        await supabase
-          .from("site_settings")
-          .select("*")
-          .eq("id", SETTINGS_ID)
-          .single(),
-      ),
+    getSettings: async () => {
+      // A not-yet-seeded singleton is a valid state, so tolerate zero rows
+      // (maybeSingle) and fall back to defaults rather than throwing.
+      const { data, error } = await supabase
+        .from("site_settings")
+        .select("*")
+        .eq("id", SETTINGS_ID)
+        .maybeSingle();
+      if (error) fail(error);
+      return (data as SiteSettings | null) ?? DEFAULT_SETTINGS;
+    },
 
     updateSettings: async (settings) =>
       one<SiteSettings>(
         await supabase
           .from("site_settings")
-          .upsert({ ...settings, id: SETTINGS_ID })
+          // Conflict on `id` explicitly (the table's own PK may be another
+          // column); requires the unique(id) constraint from migration 0006.
+          .upsert({ ...settings, id: SETTINGS_ID }, { onConflict: "id" })
           .select()
           .single(),
       ),
