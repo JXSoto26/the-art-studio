@@ -180,7 +180,13 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
   const updateBookingStatus = useCallback(
     async (id: string, status: BookingStatus) => {
       const updated = await dataService.updateBookingStatus(id, status);
-      setBookings(await dataService.listBookings());
+      // Cancelling can restore session spots, so refresh sessions too.
+      const [b, s] = await Promise.all([
+        dataService.listBookings(),
+        dataService.listSessions(),
+      ]);
+      setBookings(b);
+      setSessions(s);
       return updated;
     },
     [],
@@ -188,7 +194,13 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
 
   const deleteBooking = useCallback(async (id: string) => {
     await dataService.deleteBooking(id);
-    setBookings(await dataService.listBookings());
+    // Deleting a live booking can restore session spots, so refresh sessions.
+    const [b, s] = await Promise.all([
+      dataService.listBookings(),
+      dataService.listSessions(),
+    ]);
+    setBookings(b);
+    setSessions(s);
   }, []);
 
   // Settings -------------------------------------------------------------

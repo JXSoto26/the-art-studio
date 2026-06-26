@@ -26,7 +26,7 @@ import {
   formatCurrency,
   formatDuration,
   titleCase,
-} from "../../lib/admin/format";
+} from "../../lib/format";
 import type { Workshop } from "../../lib/admin/types";
 
 export function WorkshopsPage() {

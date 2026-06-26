@@ -68,14 +68,33 @@ export interface Booking {
   customer_name: string;
   customer_email: string;
   customer_phone: string;
-  workshop_id: string;
-  session_id: string;
+  /** Null for a general contact inquiry not tied to a specific workshop. */
+  workshop_id: string | null;
+  /** Null for a general contact inquiry not tied to a specific session. */
+  session_id: string | null;
   participants: number;
   status: BookingStatus;
+  /** Free-text message from a contact inquiry (subject + body); null otherwise. */
+  notes: string | null;
   created_at: string;
 }
 
 export type BookingInput = Omit<Booking, "id" | "created_at">;
+
+/**
+ * A public booking request for a specific workshop session. Handled atomically
+ * by the data layer (`DataService.bookSession`): validate availability, create
+ * a pending booking, and decrement the session's spots in one operation.
+ */
+export interface SessionBookingRequest {
+  workshopId: string;
+  sessionId: string;
+  name: string;
+  email: string;
+  phone: string;
+  participants: number;
+  notes: string;
+}
 
 export interface SiteSettings {
   hero_title: string;

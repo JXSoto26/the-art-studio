@@ -18,7 +18,7 @@ import {
 } from "../../components/admin/ui/StateViews";
 import { ConfirmDialog, Modal } from "../../components/admin/ui/Modal";
 import { Field, Input, Select } from "../../components/admin/ui/Form";
-import { formatDate } from "../../lib/admin/format";
+import { formatDate } from "../../lib/format";
 import { cn } from "../../lib/cn";
 import type {
   Booking,
@@ -62,9 +62,10 @@ export function BookingsPage() {
     [bookings, filter],
   );
 
-  const workshopName = (id: string) =>
-    workshops.find((w) => w.id === id)?.title ?? "—";
-  const sessionLabel = (id: string) => {
+  const workshopName = (id: string | null) =>
+    id ? (workshops.find((w) => w.id === id)?.title ?? "—") : "General inquiry";
+  const sessionLabel = (id: string | null) => {
+    if (!id) return "—";
     const s = sessions.find((x) => x.id === id);
     return s ? `${formatDate(s.date)} · ${s.start_time}` : "—";
   };
@@ -176,6 +177,11 @@ export function BookingsPage() {
                         <p className="text-xs text-ink-soft">
                           {b.customer_phone}
                         </p>
+                        {b.notes && (
+                          <p className="mt-1 max-w-xs whitespace-pre-line text-xs italic text-ink-soft/80">
+                            “{b.notes}”
+                          </p>
+                        )}
                       </TD>
                       <TD className="text-ink-soft">
                         {workshopName(b.workshop_id)}
@@ -263,6 +269,7 @@ function NewBookingModal({
     session_id: "",
     participants: 1,
     status: "pending",
+    notes: null,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -287,7 +294,12 @@ function NewBookingModal({
     }
     setSaving(true);
     try {
-      await onCreate(form);
+      // Empty selects mean "not tied to a workshop/session" — store as null.
+      await onCreate({
+        ...form,
+        workshop_id: form.workshop_id || null,
+        session_id: form.session_id || null,
+      });
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create.");
@@ -342,7 +354,7 @@ function NewBookingModal({
         <Field label="Workshop" htmlFor="bk-ws">
           <Select
             id="bk-ws"
-            value={form.workshop_id}
+            value={form.workshop_id ?? ""}
             onChange={(e) => {
               setField("workshop_id", e.target.value);
               setField("session_id", "");
@@ -359,7 +371,7 @@ function NewBookingModal({
         <Field label="Session" htmlFor="bk-se">
           <Select
             id="bk-se"
-            value={form.session_id}
+            value={form.session_id ?? ""}
             onChange={(e) => setField("session_id", e.target.value)}
             disabled={!form.workshop_id}
           >

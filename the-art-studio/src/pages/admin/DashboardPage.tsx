@@ -17,7 +17,7 @@ import {
   ErrorState,
   LoadingState,
 } from "../../components/admin/ui/StateViews";
-import { formatCurrency, formatDate } from "../../lib/admin/format";
+import { formatCurrency, formatDate } from "../../lib/format";
 
 export function DashboardPage() {
   const { workshops, sessions, bookings, loading, error, refresh } =
@@ -40,8 +40,8 @@ export function DashboardPage() {
     .slice(0, 5);
   const recentBookings = bookings.slice(0, 5);
 
-  const workshopName = (id: string) =>
-    workshops.find((w) => w.id === id)?.title ?? "—";
+  const workshopName = (id: string | null) =>
+    id ? (workshops.find((w) => w.id === id)?.title ?? "—") : "General inquiry";
 
   return (
     <>

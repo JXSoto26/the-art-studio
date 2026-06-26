@@ -4,6 +4,7 @@ import type {
   BookingStatus,
   GalleryItem,
   GalleryItemInput,
+  SessionBookingRequest,
   SiteSettings,
   Workshop,
   WorkshopInput,
@@ -17,6 +18,8 @@ import {
   seedSettings,
   seedWorkshops,
 } from "./mockData";
+import { createSupabaseDataService } from "./supabaseDataService";
+import { getSupabaseClient } from "../supabase";
 
 /**
  * The single seam between the UI and the backend.
@@ -52,6 +55,12 @@ export interface DataService {
   // Bookings
   listBookings(): Promise<Booking[]>;
   createBooking(input: BookingInput): Promise<Booking>;
+  /**
+   * Book a workshop session atomically: validate availability, create a pending
+   * booking, and decrement the session's `available_spots` in one operation.
+   * Rejects if the session is gone or has too few spots.
+   */
+  bookSession(request: SessionBookingRequest): Promise<Booking>;
   updateBookingStatus(id: string, status: BookingStatus): Promise<Booking>;
   deleteBooking(id: string): Promise<void>;
 
@@ -80,6 +89,22 @@ function freshDb(): Db {
     bookings: structuredClone(seedBookings),
     settings: structuredClone(seedSettings),
   };
+}
+
+/**
+ * Return a cancelled/deleted booking's participants to its session, never
+ * exceeding the session's capacity. No-op for general inquiries (null session)
+ * or sessions that no longer exist. Centralizes the inventory-restore rule so
+ * cancel and delete stay consistent.
+ */
+function restoreSessionSpots(db: Db, booking: Booking): void {
+  if (!booking.session_id) return;
+  const session = db.sessions.find((s) => s.id === booking.session_id);
+  if (!session) return;
+  session.available_spots = Math.min(
+    session.capacity,
+    session.available_spots + booking.participants,
+  );
 }
 
 function uid(prefix: string): string {
@@ -250,17 +275,73 @@ function createMockDataService(): DataService {
       return delay(booking);
     },
 
+    bookSession: (request) => {
+      const db = load();
+      const session = db.sessions.find((s) => s.id === request.sessionId);
+      if (!session) {
+        return Promise.reject(
+          new Error("That session is no longer available."),
+        );
+      }
+      if (!Number.isInteger(request.participants) || request.participants < 1) {
+        return Promise.reject(
+          new Error("Please choose at least one participant."),
+        );
+      }
+      if (request.participants > session.available_spots) {
+        return Promise.reject(
+          new Error(
+            session.available_spots > 0
+              ? `Only ${session.available_spots} spot${
+                  session.available_spots === 1 ? "" : "s"
+                } left for this session.`
+              : "This session is fully booked.",
+          ),
+        );
+      }
+
+      // Create the booking and decrement spots in a single load/save so the two
+      // writes can't diverge — the in-memory equivalent of the Supabase RPC.
+      const booking: Booking = {
+        customer_name: request.name.trim(),
+        customer_email: request.email.trim(),
+        customer_phone: request.phone.trim(),
+        workshop_id: request.workshopId,
+        session_id: request.sessionId,
+        participants: request.participants,
+        status: "pending",
+        notes: request.notes.trim() ? request.notes.trim() : null,
+        id: uid("bk"),
+        created_at: nowIso(),
+      };
+      db.bookings.unshift(booking);
+      session.available_spots -= request.participants;
+      save(db);
+      return delay(booking);
+    },
+
     updateBookingStatus: (id, status) => {
       const db = load();
       const idx = db.bookings.findIndex((b) => b.id === id);
       if (idx === -1) return Promise.reject(new Error("Booking not found"));
-      db.bookings[idx] = { ...db.bookings[idx], status };
+      const prev = db.bookings[idx];
+      // Restore inventory when a still-live booking is cancelled — once only.
+      if (status === "cancelled" && prev.status !== "cancelled") {
+        restoreSessionSpots(db, prev);
+      }
+      db.bookings[idx] = { ...prev, status };
       save(db);
       return delay(db.bookings[idx]);
     },
 
     deleteBooking: (id) => {
       const db = load();
+      const booking = db.bookings.find((b) => b.id === id);
+      // A non-cancelled booking still holds its spots; cancelled ones already
+      // gave theirs back, so don't restore twice.
+      if (booking && booking.status !== "cancelled") {
+        restoreSessionSpots(db, booking);
+      }
       db.bookings = db.bookings.filter((b) => b.id !== id);
       save(db);
       return delay(undefined);
@@ -279,10 +360,17 @@ function createMockDataService(): DataService {
 }
 
 /**
- * Active data service. Swap this line for a Supabase implementation later:
- *   export const dataService = createSupabaseDataService(supabase);
+ * Active data service, chosen at build time by the VITE_USE_SUPABASE flag:
+ *   - "true"  → Supabase backend (real Postgres + transactional RPCs)
+ *   - else    → in-memory mock backed by localStorage (the default)
+ *
+ * Components and providers import `dataService` and stay unaware of which one is
+ * live. The Supabase client is built lazily, so mock mode needs no Supabase env.
  */
-export const dataService: DataService = createMockDataService();
+export const dataService: DataService =
+  import.meta.env.VITE_USE_SUPABASE === "true"
+    ? createSupabaseDataService(getSupabaseClient())
+    : createMockDataService();
 
 /** Exposed for a future "reset demo data" affordance / tests. */
 export function resetMockData(): void {

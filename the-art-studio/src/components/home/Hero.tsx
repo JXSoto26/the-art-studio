@@ -1,7 +1,10 @@
 import { Container } from "../ui/Container";
 import { Button } from "../ui/Button";
+import { usePublicData } from "../../lib/public/PublicDataProvider";
 
 export function Hero() {
+  const { settings, loading } = usePublicData();
+
   return (
     <section className="relative overflow-hidden">
       {/* Soft layered background wash */}
@@ -16,15 +19,22 @@ export function Hero() {
           <p className="mb-5 text-xs font-semibold uppercase tracking-[0.26em] text-clay">
             Painting · Ceramics · Craft
           </p>
-          <h1 className="font-display text-5xl leading-[1.05] tracking-tight text-ink text-balance sm:text-6xl lg:text-7xl">
-            Make something
-            <span className="block italic text-olive">beautiful by hand.</span>
-          </h1>
-          <p className="mt-6 max-w-md text-lg leading-relaxed text-ink-soft">
-            A warm, light-filled studio for small-group classes and immersive
-            workshops. No experience needed — just curiosity and a willingness to
-            get a little clay under your nails.
-          </p>
+          {loading || !settings ? (
+            <div className="space-y-4" aria-hidden>
+              <div className="h-14 w-3/4 animate-pulse rounded-lg bg-ink/[0.06]" />
+              <div className="h-14 w-2/3 animate-pulse rounded-lg bg-ink/[0.06]" />
+              <div className="mt-6 h-6 w-full max-w-md animate-pulse rounded bg-ink/[0.05]" />
+            </div>
+          ) : (
+            <>
+              <h1 className="font-display text-5xl leading-[1.05] tracking-tight text-ink text-balance sm:text-6xl lg:text-7xl">
+                {settings.hero_title}
+              </h1>
+              <p className="mt-6 max-w-md text-lg leading-relaxed text-ink-soft">
+                {settings.hero_subtitle}
+              </p>
+            </>
+          )}
 
           <div className="mt-9 flex flex-wrap items-center gap-4">
             <Button to="/classes" variant="primary" size="lg">

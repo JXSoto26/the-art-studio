@@ -1,15 +1,21 @@
 import { Link } from "react-router-dom";
 import { Container } from "../ui/Container";
 import { navLinks } from "../../lib/content";
-
-const social = [
-  { label: "Instagram", href: "https://instagram.com" },
-  { label: "Pinterest", href: "https://pinterest.com" },
-  { label: "Journal", href: "#" },
-];
+import { usePublicData } from "../../lib/public/PublicDataProvider";
 
 export function Footer() {
   const year = 2026;
+  const { settings } = usePublicData();
+  const addressLines =
+    settings?.address.split(",").map((l) => l.trim()) ?? [];
+  const social = [
+    {
+      label: "Instagram",
+      href: settings?.instagram_url || "https://instagram.com",
+    },
+    { label: "Pinterest", href: "https://pinterest.com" },
+    { label: "Journal", href: "#" },
+  ];
 
   return (
     <footer className="mt-24 border-t border-ink/10 bg-beige">
@@ -73,9 +79,10 @@ export function Footer() {
               Visit
             </h3>
             <address className="mt-4 space-y-1 text-sm not-italic leading-relaxed text-ink-soft">
-              <p>42 Kiln Lane</p>
-              <p>Portland, OR 97209</p>
-              <p>Tue – Sun · 9am – 6pm</p>
+              {addressLines.map((line) => (
+                <p key={line}>{line}</p>
+              ))}
+              {settings?.business_hours && <p>{settings.business_hours}</p>}
             </address>
             <ul className="mt-5 flex gap-4">
               {social.map((s) => (

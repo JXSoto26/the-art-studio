@@ -5,7 +5,7 @@ import { Table, TBody, TD, TH, THead, TR } from "./ui/Table";
 import { EmptyState } from "./ui/StateViews";
 import { ConfirmDialog, Modal } from "./ui/Modal";
 import { Field, Input } from "./ui/Form";
-import { formatDate } from "../../lib/admin/format";
+import { formatDate } from "../../lib/format";
 import type {
   WorkshopSession,
   WorkshopSessionInput,

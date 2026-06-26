@@ -14,7 +14,7 @@ import {
   ErrorState,
   LoadingState,
 } from "../../components/admin/ui/StateViews";
-import { slugify } from "../../lib/admin/format";
+import { slugify } from "../../lib/format";
 import type {
   SkillLevel,
   Workshop,

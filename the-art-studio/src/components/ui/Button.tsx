@@ -36,6 +36,7 @@ type ButtonAsButton = CommonProps & {
   href?: never;
   onClick?: () => void;
   type?: "button" | "submit";
+  disabled?: boolean;
 };
 
 type ButtonProps = ButtonAsLink | ButtonAsAnchor | ButtonAsButton;
@@ -60,9 +61,14 @@ export function Button(props: ButtonProps) {
     );
   }
 
-  const { onClick, type = "button" } = props as ButtonAsButton;
+  const { onClick, type = "button", disabled } = props as ButtonAsButton;
   return (
-    <button type={type} onClick={onClick} className={classes}>
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      className={classes}
+    >
       {children}
     </button>
   );

@@ -3,6 +3,7 @@ import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import {
   DEMO_EMAIL,
   DEMO_PASSWORD,
+  IS_SUPABASE_AUTH,
   useAuth,
 } from "../../lib/admin/AuthProvider";
 import { Field, Input } from "../../components/admin/ui/Form";
@@ -12,14 +13,23 @@ interface LocationState {
 }
 
 export function LoginPage() {
-  const { isAuthenticated, signIn } = useAuth();
+  const { isAuthenticated, loading, signIn } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [email, setEmail] = useState(DEMO_EMAIL);
+  const [email, setEmail] = useState(IS_SUPABASE_AUTH ? "" : DEMO_EMAIL);
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Don't flash the form while an existing session is being restored.
+  if (loading) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-beige/50">
+        <span className="h-6 w-6 animate-spin rounded-full border-2 border-olive/30 border-t-olive" />
+      </div>
+    );
+  }
 
   if (isAuthenticated) {
     return <Navigate to="/admin/dashboard" replace />;
@@ -102,11 +112,13 @@ export function LoginPage() {
             {submitting ? "Signing in…" : "Sign in"}
           </button>
 
-          <p className="rounded-xl bg-beige/60 px-4 py-3 text-center text-xs text-ink-soft">
-            Demo — use password{" "}
-            <span className="font-medium text-ink">{DEMO_PASSWORD}</span> (any
-            email works)
-          </p>
+          {!IS_SUPABASE_AUTH && (
+            <p className="rounded-xl bg-beige/60 px-4 py-3 text-center text-xs text-ink-soft">
+              Demo — use password{" "}
+              <span className="font-medium text-ink">{DEMO_PASSWORD}</span> (any
+              email works)
+            </p>
+          )}
         </form>
       </div>
     </div>

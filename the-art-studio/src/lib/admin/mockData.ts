@@ -161,6 +161,7 @@ export const seedBookings: Booking[] = [
     session_id: "se_oils_1",
     participants: 2,
     status: "confirmed",
+    notes: null,
     created_at: "2026-06-10T14:20:00.000Z",
   },
   {
@@ -172,6 +173,7 @@ export const seedBookings: Booking[] = [
     session_id: "se_wheel_1",
     participants: 1,
     status: "pending",
+    notes: null,
     created_at: "2026-06-18T10:05:00.000Z",
   },
   {
@@ -183,6 +185,7 @@ export const seedBookings: Booking[] = [
     session_id: "se_oils_2",
     participants: 3,
     status: "paid",
+    notes: null,
     created_at: "2026-06-20T16:45:00.000Z",
   },
 ];
